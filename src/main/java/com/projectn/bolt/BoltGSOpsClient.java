@@ -8,6 +8,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
@@ -16,10 +19,15 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import javax.xml.bind.DatatypeConverter;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+/**
+ * BoltGSOpsClient processes Http Requests that are received by the function
+ * BoltGSOpsHandler.service.
+ */
 public class BoltGSOpsClient {
 
     // request types supported
@@ -50,6 +58,13 @@ public class BoltGSOpsClient {
         this.response = response;
     }
 
+    /**
+     * processEvent extracts the parameters (sdkType, requestType, bucket/key) from the Http Request,
+     * uses those parameters to send an Object/Bucket CRUD request to Bolt/GS and returns back an
+     * appropriate response.
+     * @param request incoming http request
+     * @return result of the requested operation returned by the endpoint (sdkType)
+     */
     public void processEvent(HttpRequest request) throws IOException {
 
         try {
@@ -88,7 +103,7 @@ public class BoltGSOpsClient {
                 }
             }
 
-            boltUrl = System.getenv("BOLT_URL");
+            boltUrl = System.getenv("BOLT_URL").replace("{region}", region());
 
             // create an Google/Bolt Storage service Object depending on the 'sdkType'
             // If sdkType is not specified, create an Google Storage Service Object.
@@ -134,6 +149,11 @@ public class BoltGSOpsClient {
         }
     }
 
+    /**
+     * Returns a list of objects from the given bucket in Bolt/GS
+     * @param bucketName bucket name
+     * @throws Exception
+     */
     private void listObjects(String bucketName) throws Exception {
         Bucket bucket = storage.get(bucketName);
         Page<Blob> blobs = bucket.list();
@@ -145,6 +165,10 @@ public class BoltGSOpsClient {
         }
     }
 
+    /**
+     * Returns list of buckets
+     * @throws Exception
+     */
     private void listBuckets() throws Exception {
         Page<Bucket> buckets = storage.list();
 
@@ -155,6 +179,11 @@ public class BoltGSOpsClient {
         }
     }
 
+    /**
+     * Get Bucket Metadata from Bolt/ GS
+     * @param bucketName bucket name
+     * @throws Exception
+     */
     private void getBucketMetadata(String bucketName) throws Exception {
         Bucket bucket = storage.get(bucketName,
                 Storage.BucketGetOption.fields(
@@ -170,6 +199,13 @@ public class BoltGSOpsClient {
         writer.write("VersioningEnabled: " + bucket.versioningEnabled());
     }
 
+    /**
+     * Uploads an object to Bolt/GS.
+     * @param bucketName bucket name
+     * @param objectName object name
+     * @param value object data
+     * @throws Exception
+     */
     private void uploadObject(String bucketName, String objectName, String value) throws Exception {
         BlobId blobId = BlobId.of(bucketName, objectName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/plain").build();
@@ -183,6 +219,13 @@ public class BoltGSOpsClient {
         writer.write("MD5HexString: " + blob.getMd5ToHexString());
     }
 
+    /**
+     * Gets the object from Bolt/GS, computes and returns the object's MD5 hash.
+     * If the object is gzip encoded, object is decompressed before computing its MD5.
+     * @param bucketName bucket name
+     * @param objectName object name
+     * @throws Exception
+     */
     private void downloadObject(String bucketName, String objectName) throws Exception {
         Blob blob = storage.get(BlobId.of(bucketName, objectName));
         byte[] content = blob.getContent();
@@ -221,6 +264,12 @@ public class BoltGSOpsClient {
         writer.write("md5: " + md5);
     }
 
+    /**
+     * Retrieves the object's metadata from Bolt / GS.
+     * @param bucketName bucket name
+     * @param objectName object name
+     * @throws Exception
+     */
     private void getObjectMetadata(String bucketName, String objectName) throws Exception {
         Blob blob = storage.get(bucketName, objectName,
                 Storage.BlobGetOption.fields(Storage.BlobField.values()));
@@ -247,10 +296,42 @@ public class BoltGSOpsClient {
         }
     }
 
+    /**
+     * Delete an object from Bolt/GS.
+     * @param bucketName bucket name
+     * @param objectName object name
+     * @throws Exception
+     */
     private void deleteObject(String bucketName, String objectName) throws Exception {
         boolean deleted = storage.delete(bucketName, objectName);
 
         BufferedWriter writer = response.getWriter();
         writer.write("Deleted: " + deleted);
+    }
+
+    /**
+     * Get deployment region of the function
+     * @return region
+     * @throws IOException
+     */
+    public static String region() throws IOException {
+
+        String mdZoneUrl = "http://metadata.google.internal/computeMetadata/v1/instance/zone";
+
+        OkHttpClient ok = new OkHttpClient.Builder()
+                .readTimeout(500, TimeUnit.MILLISECONDS)
+                .writeTimeout(500, TimeUnit.MILLISECONDS)
+                .build();
+
+        Request request = new Request.Builder()
+                .url(mdZoneUrl)
+                .addHeader("Metadata-Flavor", "Google")
+                .get()
+                .build();
+
+        Response response = ok.newCall(request).execute();
+        String zoneMd = response.body().string();
+        String zone = zoneMd.substring(zoneMd.lastIndexOf("/") + 1);
+        return zone.substring(0, zone.lastIndexOf("-"));
     }
 }

@@ -16,6 +16,10 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.util.zip.GZIPInputStream;
 
+/**
+ * BoltGSValidateObjHandler represents a Google Cloud Function that is invoked by an HTTP Request and performs
+ * data validation tests
+ */
 public class BoltGSValidateObjHandler implements HttpFunction {
 
     // Indicates if source bucket is cleaned post crunch.
@@ -28,6 +32,19 @@ public class BoltGSValidateObjHandler implements HttpFunction {
 
     private static final Gson gson = new Gson();
 
+    /**
+     * service serves an incoming HTTP Request for performing data validation tests.
+     *
+     * service accepts the following input parameters as part of the HTTP Request:
+     * 1) bucket - bucket name
+     * 2) key - key name
+     *
+     * service retrieves the object from Bolt and GS (if BucketClean is OFF), computes and returns their
+     * corresponding MD5 hash. If the object is gzip encoded, object is decompressed before computing its MD5.
+     * @param request incoming http request
+     * @param response outgoing http response
+     * @return md5s of object retrieved from Bolt and GS.
+     */
     @Override
     public void service(HttpRequest request, HttpResponse response)
             throws IOException {
@@ -59,7 +76,7 @@ public class BoltGSValidateObjHandler implements HttpFunction {
         }
 
         Storage gsStorage = StorageOptions.getDefaultInstance().getService();
-        String boltUrl = System.getenv("BOLT_URL");
+        String boltUrl = System.getenv("BOLT_URL").replace("{region}", BoltGSOpsClient.region());
         Storage boltStorage = StorageOptions.newBuilder().setHost(boltUrl).build().getService();
 
         try {
