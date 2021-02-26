@@ -105,7 +105,7 @@ gcloud functions deploy <function-name> \
     * key - key name
 
 * Following is an example of an event that can be used to invoke the function.
-    * Retrieve object(its MD5 hash) from Bolt and S3:
+    * Retrieve object(its MD5 hash) from Bolt and GS:
 
       If the object is gzip encoded, object is decompressed before computing its MD5.
       ```json
