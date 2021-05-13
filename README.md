@@ -35,10 +35,18 @@ gcloud functions deploy <function-name> \
 
 ### Usage
 
-* The sample Java Cloud Function can be tested from the Google Cloud Console by specifying a 
-  triggering event in JSON format.
+The sample Java Cloud Function illustrates the usage and various operations, via separate entry points,
+that can be performed using Cloud Storage Client library for Java. The deployed Java Cloud Function can be tested
+from the Google Cloud Console by specifying a triggering event in JSON format.
 
-#### BoltGSOpsHandler
+Please ensure that `Bolt` is deployed before testing the sample Java Cloud Function. If you haven't deployed `Bolt`,
+follow the instructions given [here](https://xyz.projectn.co/installation-guide#estimate-savings) to deploy `Bolt`.
+
+#### Testing Bolt or GS Operations
+
+`BoltGSOpsHandler` is the function that enables the user to perform Bolt or GS operations.
+It sends a Bucket or Object request to Bolt or GS and returns an appropriate response based on the parameters
+passed in as input.
 
 * BoltGSOpsHandler represents a Google Cloud Function that is invoked by an HTTP Request.
 
@@ -93,7 +101,11 @@ gcloud functions deploy <function-name> \
       ```
 
 
-#### BoltGSValidateObjHandler
+#### Data Validation Tests
+
+`BoltGSValidateObjHandler` is the function that enables the user to perform data validation tests. It retrieves
+the object from Bolt and GS (Bucket Cleaning is disabled), computes and returns their corresponding MD5 hash.
+If the object is gzip encoded, object is decompressed before computing its MD5.
 
 * BoltGSValidateObjHandler represents a Google Cloud Function that is invoked by an HTTP Request for performing
   data validation tests. To use this Function, change the entry point to `com.projectn.bolt.BoltGSValidateObjHandler`
@@ -111,3 +123,8 @@ gcloud functions deploy <function-name> \
       ```json
       {"bucket": "<bucket>", "key": "<key>"}
       ```
+
+### Getting Help
+
+For additional assistance, please refer to [Project N Docs](https://xyz.projectn.co/) or contact us directly
+[here](mailto:support@projectn.co)
