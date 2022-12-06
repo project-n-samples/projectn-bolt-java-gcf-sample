@@ -62,26 +62,27 @@ public class App {
     public static void main(String[] args){
         String bucketName = "bolt-test-gs-code";
         String objectName = "file_1.txt";
-
-        Storage gsStorage = StorageOptions.getDefaultInstance().getService();
-        String boltUrl = "https://bolt.us-central1.enoirsatuy.bolt.projectn.co";
-        Storage boltStorage = StorageOptions.newBuilder().setHost(boltUrl).build().getService();
-        System.out.println(boltUrl);
         
         try {
+            Storage gsStorage = StorageOptions.getDefaultInstance().getService();
             String gsMD5Output = getObject(gsStorage, bucketName, objectName);
-            System.out.println(gsMD5Output);
-
-            String boltMD5Output = getObject(boltStorage, bucketName, objectName);
-            System.out.println(boltMD5Output);
-
+            System.out.println("From GCS "+gsMD5Output);
         } catch (NoSuchAlgorithmException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
+
+        String boltMD5Output = "";            
+        try {
+            String boltUrl = System.getenv("BOLT_URL");
+            Storage boltStorage = StorageOptions.newBuilder().setHost(boltUrl).build().getService();
+            System.out.println(boltUrl);
+            boltMD5Output = getObject(boltStorage, bucketName, objectName);
+        } catch (NoSuchAlgorithmException | IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("From Bolt "+boltMD5Output);
         
     }
 }
